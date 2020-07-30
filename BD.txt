@@ -1,0 +1,104 @@
+DROP TABLE banco
+CREATE TABLE banco (
+codbanco INTEGER NOT NULL,
+nome VARCHAR(50),
+CONSTRAINT pk_banco PRIMARY KEY (codbanco))
+
+DROP TABLE catlancto
+CREATE TABLE catlancto (
+    codcatlancto integer NOT NULL,
+    descricao VARCHAR(50) NOT NULL,
+    debcred VARCHAR(1),
+    CONSTRAINT pk_catlancto PRIMARY KEY (codcatlancto)
+);
+
+CREATE TABLE subcatlancto (
+    codsubcatlancto integer NOT NULL,
+    descricao VARCHAR(50) NOT NULL,
+    codcatlancto integer NOT NULL,
+    bloconodre INTEGER,
+    CONSTRAINT pk_subcatlancto PRIMARY KEY (codsubcatlancto),
+	 CONSTRAINT fk_codlancto FOREIGN KEY (codcatlancto)
+		REFERENCES catlancto (codcatlancto) MATCH SIMPLE ON UPDATE CASCADE ON DELETE NO ACTION
+
+);
+
+DROP TABLE fornecedor
+CREATE TABLE fornecedor (
+    codfornec integer NOT NULL,
+    nome VARCHAR(50) NOT NULL,
+    codbanco integer,
+    codcatlancto integer,
+    codsubcatlancto integer,
+    CONSTRAINT pk_fornecedor PRIMARY KEY (codfornec),
+	 CONSTRAINT fk_catlancto FOREIGN KEY (codcatlancto)
+		REFERENCES catlancto (codcatlancto) MATCH SIMPLE ON UPDATE CASCADE ON DELETE NO ACTION,
+	 CONSTRAINT fk_subcatlancto FOREIGN KEY (codsubcatlancto)
+		REFERENCES subcatlancto (codsubcatlancto) MATCH SIMPLE ON UPDATE CASCADE ON DELETE NO ACTION
+);
+
+SELECT codfornec FROM fornecedor
+INSERT INTO fornecedor  (1,'NOME',1,1,1)
+
+DROP TABLE lancamento
+
+CREATE TABLE lancamento (
+codlancto INT AUTO_INCREMENT PRIMARY KEY,
+dtemissao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+pagrec VARCHAR(1),
+codparceiro INT,
+favorecido VARCHAR(50),
+codbanco INT,
+codcatlancto INT,
+codsubcatlancto INT,
+valorparcela DECIMAL (12,2),
+referencia  VARCHAR(50),
+CONSTRAINT fk_lancamento_fornecedor FOREIGN KEY (codparceiro)
+	REFERENCES fornecedor (codfornec) MATCH SIMPLE ON UPDATE CASCADE ON DELETE NO ACTION,
+CONSTRAINT fk_lancamento_banco FOREIGN KEY (codbanco)
+	REFERENCES banco (codbanco) MATCH SIMPLE ON UPDATE CASCADE ON DELETE NO ACTION,
+CONSTRAINT fk_lancamento_catlancto FOREIGN KEY (codcatlancto)
+	REFERENCES catlancto (codcatlancto) MATCH SIMPLE ON UPDATE CASCADE ON DELETE NO ACTION,
+CONSTRAINT fk_lancamento_subcatlancto FOREIGN KEY (codsubcatlancto)
+	REFERENCES subcatlancto (codsubcatlancto) MATCH SIMPLE ON UPDATE CASCADE ON DELETE NO ACTION
+)	
+
+INSERT INTO lancamento (codparceiro, codbanco, codcatlancto, codsubcatlanCto, valorparcela, referencia)
+VALUES (1,1,1,2, 99.88, 'REFERENCIA')
+SELECT * FROM lancamento
+
+
+DROP TABLE parametro2 
+CREATE TABLE parametro2 (
+    idparametro INT AUTO_INCREMENT PRIMARY KEY,
+    valor character varying(20),
+    descrparam character varying(100),
+    observacao text
+);
+
+INSERT INTO parametro2 VALUES (1, '2', 'Tipo do banco de dados', '1: Banco antigo (websac) /n 2:Banco Novo');
+INSERT INTO parametro2 VALUES (2, '1', 'Codigo saldo carteira', 'Definir codigo do banco para mostrar saldo de carteira na pagina inicial');
+INSERT INTO parametro2 VALUES (3, '0', 'Codigo saldo cartao', 'Definir codigo do banco para mostrar saldo de Cartao na pagina inicial');
+
+DROP TRIGGER trg_before_lancamento
+DELIMITER $$
+CREATE TRIGGER trg_before_lancamento
+BEFORE INSERT ON lancamento
+FOR EACH ROW
+BEGIN
+	/*Gravando favorecido na tabela lançamento */
+	SET new.favorecido := (SELECT SUBSTR(nome,1,40) AS nome FROM fornecedor WHERE codfornec = new.codparceiro);
+	
+	/*Verificando se o lançamento é um pagamento ou recebimento */
+	IF SUBSTR(new.referencia,1,1)='#' THEN
+		SET new.pagrec:='R';
+	ELSE	
+		SET new.pagrec:='P';
+	END IF;
+	
+	/* Preenche a Categoria do Lancamento */
+	SET new.codcatlancto := (SELECT codcatlancto FROM fornecedor WHERE codfornec = new.codparceiro);
+	SET new.codsubcatlancto := (SELECT codsubcatlancto FROM fornecedor WHERE codfornec = new.codparceiro);
+
+	
+END$$

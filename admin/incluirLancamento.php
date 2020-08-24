@@ -22,6 +22,9 @@ $parambanco = ver("parametro2", "valor", "idparametro=1");
 		$insere_tabela = "lancamentogru";
 	}	
 	
+	//echo "<br>Valor: ".$_POST[valorparcela];
+	$_POST[valorparcela] = str_replace(",","",$_POST[valorparcela]);
+	//echo "<br>Valor2: ".$_POST[valorparcela];
     //if (inserir("lancamentogru", $_POST)){
     if (inserir($insere_tabela, $_POST)){	
         header('Location: lancamento.php');
